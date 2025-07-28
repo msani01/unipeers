@@ -6,4 +6,4 @@ export default function Index() {
       <Text>My Self Edited Code.</Text>
     </View>
   )
-}
+}  
