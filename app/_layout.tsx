@@ -27,6 +27,14 @@ export default function RootLayout() {
         title:"About Unipeers"
       }}
       />
+
+      <Stack.Screen
+        name="event-details"
+        options={{
+        headerShown:false,
+        title:"Event Details"
+      }}
+      />
     </Stack>
   );
 }
