@@ -4,25 +4,68 @@ import { formatTimestampToDate } from "@/utils/format-date.utils";
 import { themeColors } from "@/utils/theme.utils";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { useEffect, useState } from "react";
-import { Platform, ScrollView, StatusBar, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
+import { Platform, ScrollView, StatusBar, StyleSheet, Text, TextInput, TouchableOpacity,
+    ActivityIndicator, View, 
+    Alert} from "react-native";
 import RNPickerSelect from 'react-native-picker-select';
+import { db } from "@/config/firebase.config";
+import { addDoc, collection } from "firebase/firestore";
 
-const options = [
-    {
-        label: "Lagos",
-        value: "lagos"
-    }
-]
 
 export default function Create () {
     const [title,setTitle] = useState("");
     const [description,setDescription] = useState("");
     const [venue,setVenue] = useState("");
+    const [imageUrl,setImageUrl] = useState("");
+    const [fee,setFee] = useState("");
     const [schoolOptions,setSchoolOptions] = useState([]);
     const [selectedSchool,setSelectedSchool] = useState(null);
     const [date,setDate] = useState(new Date());
     const [showPicker,setShowPicker] = useState(false);
+    const [loading,setLoading] = useState(false);
 
+    console.log(date, ">>>>>>>>>>")
+
+    const handleCreateEvent = async () => {
+        setLoading(true)
+        try {
+           const docRef = addDoc(collection(db,"events"), {
+            title: title,
+            desc: description,
+            venue: venue,
+            school: selectedSchool,
+            date: "",
+            createdBy: "anonymous",
+            createdAt: new Date().getTime(),
+            imgUrl: imageUrl,
+            fee: fee
+            
+        });
+        setLoading(false);
+
+        Alert.alert(
+            "Alert",
+            "Your event was successfully created",
+            [
+                {text: "Okay"},
+                {text: "Return to feeds",
+                    onPress: () => console.log("to be implemented")
+                }
+            ]
+        )
+            // clear input data
+            setDate("");
+            setTitle("");
+            setVenue("");
+            setDescription("");
+            setFee("");
+            setImageUrl("");
+        } catch (error) {
+            console.log("An error was encountered",error)
+            setLoading(false)
+        }
+       
+    }
     // make a simple list of schools
     useEffect(() => {
         const list = [];
@@ -66,6 +109,25 @@ export default function Create () {
                     </View>
 
                     <View>
+                        <Text className="text-md text-neutral-500">What is the fee for this event?</Text>
+                        <TextInput
+                        keyboardType="numeric"
+                        style={styles.input}
+                        placeholder="fee in Naira"
+                        value={fee}
+                        onChangeText={(text) => setFee(text)}/>
+                    </View>
+
+                    <View>
+                        <Text className="text-md text-neutral-500">Image address</Text>
+                        <TextInput
+                        style={styles.input}
+                        placeholder="image link address"
+                        value={imageUrl}
+                        onChangeText={(text) => setImageUrl(text)}/>
+                    </View>
+
+                    {/* <View>
                         <TouchableOpacity 
                         onPress={() => setShowPicker(true)}
                         style={styles.picker}
@@ -80,7 +142,7 @@ export default function Create () {
                             value={date}
                             onChange={onChange}/>
                         )}
-                    </View>
+                    </View> */}
 
                     <View>
                         <Text className="text-md text-neutral-500">Event venue</Text>
@@ -99,6 +161,21 @@ export default function Create () {
                         onValueChange={(item) => setSelectedSchool(item)}
                         value={selectedSchool}/>
                     </View>}
+
+                    <TouchableOpacity
+                    onPress={title.length > 6 && 
+                        description.length > 3 && 
+                        imageUrl.length > 8
+                         ? handleCreateEvent : () => {}
+                        }
+                    style={styles.submitBtn}>
+                        {loading === true
+                        ?
+                        <ActivityIndicator size="large" color="white"/>
+                        :
+                        <Text style={styles.btnText}>Create event</Text>
+                    }
+                    </TouchableOpacity>
                 </View>
 
                 {/* how to create event - documentation */}
@@ -135,5 +212,21 @@ const styles = StyleSheet.create({
         borderRadius: 8,
         paddingHorizontal: 16,
         paddingVertical: 8
+    },
+    submitBtn: {
+        height: 60,
+        display: "flex",
+        flexDirection: "row",
+        justifyContent: "center",
+        alignItems: "center",
+        gap: 16,
+        backgroundColor: "brown",
+        borderRadius: 16
+    },
+    btnText: {
+        fontSize: 16,
+        color: "white",
+        fontWeight: "bold"
+
     }
 })
