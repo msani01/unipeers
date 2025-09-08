@@ -4,7 +4,7 @@ import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { db } from "@/config/firebase.config";
-import { getDocs, collection, query, where, orderBy } from "firebase/firestore";
+import { onSnapshot, collection, query, where, orderBy } from "firebase/firestore";
 import { useEffect, useState } from "react";
 import { Seperator } from "@/components/ListSeparator";
 import { UserEventSnippet } from "@/components/UserEventSnippet";
@@ -22,13 +22,16 @@ export default function Profile () {
                 collection(db, "events"),
                 where("createdBy", "==", user)
             );
-            const onSnap = await getDocs(q);
-            onSnap.docs.forEach(doc => reData.push({
-                id: doc.id,
-                data: doc.data()
-            }))
+            
+            onSnapshot(q, (onSnap) => {
+                onSnap.docs.forEach((doc) => reData.push({
+                    id: doc.id,
+                    data: doc.data()
+                }));
+                setUserEvents(reData)
+            });
 
-            setUserEvents(reData)
+            
         }
 
         // call and execute
