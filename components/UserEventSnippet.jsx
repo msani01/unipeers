@@ -62,11 +62,17 @@ export function UserEventSnippet ({ eventData,boxWidth}) {
                         :
                     <Feather name="trash-2" size={24} color="black"/>}
                 </TouchableOpacity>
-                <Link href="#" >
+                <Link
+                    href={{
+                        pathname: "/update-event/[uid]",
+                        params: { uid: data.id }, // ✅ Pass the correct Firestore doc ID
+                    }}
+                    >
                     <View style={styles.ctaBorder}>
                         <Feather name="edit" size={24} color="black" />
                     </View>
                 </Link>
+
                 </View>
             </View>
             )

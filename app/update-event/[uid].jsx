@@ -2,187 +2,197 @@ import { howToCreateEvent } from "@/assets/local-data/how-to-create-event";
 import { schools } from "@/assets/local-data/school-list";
 import { themeColors } from "@/utils/theme.utils";
 import { useEffect, useState } from "react";
-import { Platform, ScrollView, StatusBar, StyleSheet, Text, TextInput, TouchableOpacity,
-    ActivityIndicator, View, 
-    Alert} from "react-native";
-import RNPickerSelect from 'react-native-picker-select';
+import {
+    Platform,
+    ScrollView,
+    StatusBar,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    ActivityIndicator,
+    View,
+    Alert,
+} from "react-native";
+import RNPickerSelect from "react-native-picker-select";
 import { db } from "@/config/firebase.config";
-import { addDoc, collection } from "firebase/firestore";
+import { doc, getDoc, updateDoc } from "firebase/firestore";
+import { useLocalSearchParams, useRouter } from "expo-router"; 
 
+export default function UpdateEvent() {
+    const { uid } = useLocalSearchParams(); // ✅ get dynamic param
 
-// get id of event
-// perform getDoc
-// set doc data to useState
-// perform updateDoc
+    console.log("Event UID:", uid); // 🟢 Debugging line
+    const router = useRouter();
 
+    const [title, setTitle] = useState("");
+    const [description, setDescription] = useState("");
+    const [venue, setVenue] = useState("");
+    const [imageUrl, setImageUrl] = useState("");
+    const [fee, setFee] = useState("");
+    const [schoolOptions, setSchoolOptions] = useState([]);
+    const [selectedSchool, setSelectedSchool] = useState(null);
+    const [date, setDate] = useState(new Date());
+    const [loading, setLoading] = useState(false);
 
-export default function UpdateEvent () {
-    const [title,setTitle] = useState("");
-    const [description,setDescription] = useState("");
-    const [venue,setVenue] = useState("");
-    const [imageUrl,setImageUrl] = useState("");
-    const [fee,setFee] = useState("");
-    const [schoolOptions,setSchoolOptions] = useState([]);
-    const [selectedSchool,setSelectedSchool] = useState(null);
-    const [date,setDate] = useState(new Date());
-    const [showPicker,setShowPicker] = useState(false);
-    const [loading,setLoading] = useState(false);
-
-    console.log(date, ">>>>>>>>>>")
-
-    const handleCreateEvent = async () => {
-        setLoading(true)
-        try {
-           const docRef = addDoc(collection(db,"events"), {
-            title: title,
-            desc: description,
-            venue: venue,
-            school: selectedSchool,
-            date: "",
-            createdBy: "anonymous",
-            createdAt: new Date().getTime(),
-            imgUrl: imageUrl,
-            fee: fee
-            
-        });
-        setLoading(false);
-
-        Alert.alert(
-            "Alert",
-            "Your event was successfully created",
-            [
-                {text: "Okay"},
-                {text: "Return to feeds",
-                    onPress: () => console.log("to be implemented")
-                }
-            ]
-        )
-            // clear input data
-            setDate("");
-            setTitle("");
-            setVenue("");
-            setDescription("");
-            setFee("");
-            setImageUrl("");
-        } catch (error) {
-            console.log("An error was encountered",error)
-            setLoading(false)
-        }
-       
-    }
-    // make a simple list of schools
+    // ✅ fetch event details safely
     useEffect(() => {
-        const list = [];
-        schools.forEach(item => list.push({
+        const fetchEvent = async () => {
+            if (!uid) return; // avoid calling Firestore with undefined uid
+
+            try {
+                setLoading(false);
+                const docRef = doc(db, "events", uid);
+                const docSnap = await getDoc(docRef);
+
+                if (docSnap.exists()) {
+                    const data = docSnap.data();
+                    setTitle(data.title );
+                    setDescription(data.desc );
+                    setVenue(data.venue );
+                    setImageUrl(data.imgUrl );
+                    setFee(data.fee );
+                    setSelectedSchool(data.school);
+                    setDate(data.date ? new Date(data.date) : new Date());
+                } else {
+                    Alert.alert("Error", "Event not found!");
+                }
+            } catch (error) {
+                console.error("Error fetching event:", error);
+                Alert.alert("Error", "Failed to fetch event data.");
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchEvent();
+    }, [uid]);
+
+    // ✅ Update event in Firestore
+    const handleUpdateEvent = async () => {
+        if (!title || !description || !venue || !selectedSchool) {
+            Alert.alert("Validation Error", "Please fill all required fields.");
+            return;
+        }
+
+        try {
+            setLoading(true);
+            const docRef = doc(db, "events", uid);
+            await updateDoc(docRef, {
+                title,
+                desc: description,
+                venue,
+                school: selectedSchool,
+                date: date.getTime(),
+                imgUrl: imageUrl,
+                fee,
+                updatedAt: new Date().getTime(),
+            });
+
+            setLoading(false);
+            Alert.alert("Success", "Event updated successfully!", [
+                {
+                    text: "OK",
+                    onPress: () => router.back(), // ✅ navigate back after update
+                },
+            ]);
+        } catch (error) {
+            console.error("Error updating event:", error);
+            Alert.alert("Error", "Failed to update event.");
+            setLoading(false);
+        }
+    };
+
+    // ✅ Populate school list
+    useEffect(() => {
+        const list = schools.map(item => ({
             label: item.title,
-            value: item.symbol
+            value: item.symbol,
         }));
         setSchoolOptions(list);
-    },[]);
-
-    const onChange = (event,selectedDate) => {
-        const currentDate = selectedDate || date;
-        setDate(currentDate);
-        setShowPicker(false);
-    }
+    }, []);
 
     return (
         <View style={styles.main}>
-            <Text className="text-black text-4xl font-bold">Create an event</Text>
+            <Text className="text-black text-4xl font-bold">Update Event</Text>
 
-            <ScrollView contentContainerStyle={{gap: 16}}>
-                {/* event creation form */}
+            <ScrollView contentContainerStyle={{ gap: 16 }}>
                 <View className="flex gap-4 bg-white rounded-md p-3">
                     <View>
                         <Text className="text-md text-neutral-500">Event title</Text>
                         <TextInput
-                        style={styles.input}
-                        placeholder="title of your event"
-                        value={title}
-                        onChangeText={(text) => setTitle(text)}/>
-                    </View>
-                    
-                    <View>
-                        <Text className="text-md text-neutral-500">Event description</Text>
-                        <TextInput
-                        multiline={true}
-                        style={styles.input}
-                        placeholder="title of your event"
-                        value={description}
-                        onChangeText={(text) => setDescription(text)}/>
+                            style={styles.input}
+                            placeholder="Title of your event"
+                            value={title}
+                            onChangeText={setTitle}
+                        />
                     </View>
 
                     <View>
-                        <Text className="text-md text-neutral-500">What is the fee for this event?</Text>
+                        <Text className="text-md text-neutral-500">Event description</Text>
                         <TextInput
-                        keyboardType="numeric"
-                        style={styles.input}
-                        placeholder="fee in Naira"
-                        value={fee}
-                        onChangeText={(text) => setFee(text)}/>
+                            multiline={true}
+                            style={styles.input}
+                            placeholder="Description of your event"
+                            value={description}
+                            onChangeText={setDescription}
+                        />
+                    </View>
+
+                    <View>
+                        <Text className="text-md text-neutral-500">Event fee</Text>
+                        <TextInput
+                            keyboardType="numeric"
+                            style={styles.input}
+                            placeholder="Fee in Naira"
+                            value={fee}
+                            onChangeText={setFee}
+                        />
                     </View>
 
                     <View>
                         <Text className="text-md text-neutral-500">Image address</Text>
                         <TextInput
-                        style={styles.input}
-                        placeholder="image link address"
-                        value={imageUrl}
-                        onChangeText={(text) => setImageUrl(text)}/>
+                            style={styles.input}
+                            placeholder="Image link"
+                            value={imageUrl}
+                            onChangeText={setImageUrl}
+                        />
                     </View>
-
-                    {/* <View>
-                        <TouchableOpacity 
-                        onPress={() => setShowPicker(true)}
-                        style={styles.picker}
-                        className="flex flex-row justify-between items-center">
-                            <Text className="font-bold text-lg text-neutral-100">{formatTimestampToDate(date)}</Text>
-                            <Text className="font-bold text-2xl text-neutral-100">Select event date</Text>
-                        </TouchableOpacity>
-                        {showPicker && (
-                            <DateTimePicker
-                            testID="dateTimePicker"
-                            mode="date"
-                            value={date}
-                            onChange={onChange}/>
-                        )}
-                    </View> */}
 
                     <View>
                         <Text className="text-md text-neutral-500">Event venue</Text>
                         <TextInput
-                        style={styles.input}
-                        placeholder="exact event venue"
-                        value={venue}
-                        onChangeText={(text) => setVenue(text)}/>
+                            style={styles.input}
+                            placeholder="Exact event venue"
+                            value={venue}
+                            onChangeText={setVenue}
+                        />
                     </View>
-                    
-                    {schoolOptions.length > 0 &&
-                    <View style={styles.input}>
-                        <Text>Choose school where event will be held</Text>
-                        <RNPickerSelect
-                        items={schoolOptions} // requires an object with label an value
-                        onValueChange={(item) => setSelectedSchool(item)}
-                        value={selectedSchool}/>
-                    </View>}
+
+                    {schoolOptions.length > 0 && (
+                        <View style={styles.input}>
+                            <Text>Choose school where event will be held</Text>
+                            <RNPickerSelect
+                                items={schoolOptions}
+                                onValueChange={setSelectedSchool}
+                                value={selectedSchool}
+                            />
+                        </View>
+                    )}
 
                     <TouchableOpacity
-                    onPress={title.length > 6 && 
-                        description.length > 3 && 
-                        imageUrl.length > 8
-                         ? handleCreateEvent : () => {}
-                        }
-                    style={styles.submitBtn}>
-                        {loading === true
-                        ?
-                        <ActivityIndicator size="large" color="white"/>
-                        :
-                        <Text style={styles.btnText}>Create event</Text>
-                    }
+                        onPress={handleUpdateEvent}
+                        style={styles.submitBtn}
+                    >
+                        {loading ? (
+                            <ActivityIndicator size="large" color="white" />
+                        ) : (
+                            <Text style={styles.btnText}>Update Event</Text>
+                        )}
                     </TouchableOpacity>
                 </View>
 
-                {/* how to create event - documentation */}
                 <View className="flex gap-4 bg-white rounded-md p-3">
                     {howToCreateEvent.map(item => (
                         <View key={item.title}>
@@ -193,12 +203,12 @@ export default function UpdateEvent () {
                 </View>
             </ScrollView>
         </View>
-    )
+    );
 }
 
 const styles = StyleSheet.create({
     main: {
-        flex:1,
+        flex: 1,
         gap: 16,
         paddingTop: Platform.OS === "ios" ? 24 : StatusBar.currentHeight,
         paddingHorizontal: 12,
@@ -211,26 +221,18 @@ const styles = StyleSheet.create({
         borderRadius: 8,
         fontSize: 16,
     },
-    picker: {
-        backgroundColor: themeColors.darkGray,
-        borderRadius: 8,
-        paddingHorizontal: 16,
-        paddingVertical: 8
-    },
     submitBtn: {
         height: 60,
         display: "flex",
         flexDirection: "row",
         justifyContent: "center",
         alignItems: "center",
-        gap: 16,
         backgroundColor: "brown",
-        borderRadius: 16
+        borderRadius: 16,
     },
     btnText: {
         fontSize: 16,
         color: "white",
-        fontWeight: "bold"
-
-    }
-})
+        fontWeight: "bold",
+    },
+});
